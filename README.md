@@ -2,7 +2,7 @@
 
 **LAWS90286 Legal AI — Assignment 2**
 
-**Deployed application:** https://YOUR-APP-NAME.streamlit.app  <!-- replace with your Streamlit Cloud URL -->
+**Deployed application:** https://amlsktfakztyd3ncmhjac6.streamlit.app/  
 
 ## What the tool does
 
