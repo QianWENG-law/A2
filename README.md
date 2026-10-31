@@ -1,1 +1,133 @@
-# A2
+# Australian Trade Mark Registrability Pre-Check
+
+**LAWS90286 Legal AI — Assignment 2**
+
+**Deployed application:** https://YOUR-APP-NAME.streamlit.app  <!-- replace with your Streamlit Cloud URL -->
+
+## What the tool does
+
+A person who wants to register a trade mark in Australia enters their mark, the goods/services
+it will be used for and (optionally) any earlier trade marks they know of. Before they pay the
+filing fee, the tool assesses whether the mark is likely to face an objection under the
+*Trade Marks Act 1995* (Cth). It then produces a downloadable report rating the risk under each
+ground and suggesting how to reduce it.
+
+The legal task is broken into discrete steps. Each step is a separate AI call that receives only
+the legal notes relevant to that step (see `law_notes.py`):
+
+| Step | Sub-process | Legal basis | AI calls |
+|---|---|---|---|
+| 1 | Interpret the application: meaning of the words, Nice classes, target consumers | Nice Classification | 1 |
+| 2 | Prohibited signs; scandalous matter; use contrary to law | ss 39, 42 | 1 |
+| 3 | Capacity to distinguish | s 41; *Clark Equipment*; *Cantarella* | 1 |
+| 4 | Deceptive or confusing connotation | s 43 | 1 |
+| 5 | Conflict with earlier marks (one call per earlier mark; if none are entered, a search plan) | s 44; *Shell v Esso*; *Australian Woollen Mills*; *Self Care v Allergan* | 1+ |
+| ↳ | **Self-consistency (steps 3 and 5):** the evaluative questions are asked N times independently (default 3, adjustable in the sidebar); the majority risk rating is used and the agreement rate is shown as a confidence score | — | ×N |
+| 6 | **Reflection:** a "reviewing partner" checks steps 1–5; any step it flags is re-run once with its comments | — | 1 (+ re-runs) |
+| 7 | Final report in plain English | — | 1 |
+
+Each run makes **at least 6 AI calls** (about 11 with the default settings and one earlier mark).
+The "AI call log" tab shows every call, and the "Reviewer" tab shows what changed after reflection.
+
+**Why self-consistency?** Whether a mark is "inherently adapted to distinguish" (s 41) or
+"deceptively similar" (s 44) is an evaluative judgement, and a language model can give different
+answers to the same question. Asking several times and taking the majority makes the result more
+stable. The agreement rate (e.g. "2 of 3 assessments rated this HIGH") also tells the user
+how confident the tool is: low agreement flags a borderline mark that needs a professional opinion.
+
+**Inputs:** text inputs (mark, goods/services, earlier marks), drop-downs (mark type, prior use),
+checkbox (reflection on/off), slider (number of self-consistency samples), model selection.
+**Outputs:** overall risk rating, risk rating and confidence (agreement rate) per ground, step-by-step analysis, reviewer
+comments, AI call log, and a downloadable Markdown report.
+
+> This tool is a study project and gives general, preliminary information only. It is not legal advice.
+> It does **not** search the IP Australia register: s 44 is assessed only against marks the user enters.
+
+## Running the app
+
+1. Open the deployed URL above.
+2. Enter your own OpenAI API key in the sidebar (**API Credentials**). The app does not include any API key.
+3. Fill in the form and click **Run pre-check** (a run takes roughly 30–60 seconds).
+
+Run locally:
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env    # optional: put your key in .env for local development
+streamlit run app.py
+```
+
+## Test cases
+
+Each test case is based on the facts of a decided Australian case, so the tool's output can be
+compared with the court's actual conclusion. No files need to be uploaded. Copy the inputs into
+the form exactly as shown. Use the default settings (gpt-4o-mini, reflection on) unless stated.
+
+### Test case 1: foreign word for coffee (s 41), *Cantarella Bros v Modena Trading* [2014] HCA 48
+
+| Field | Input |
+|---|---|
+| Trade mark | `ORO` |
+| Type of mark | Word mark |
+| Goods/services | `Coffee, coffee beans, ground coffee and espresso coffee blends sold to cafes, restaurants and retailers` |
+| Prior use | Used for 2+ years |
+| Earlier trade marks | *(leave blank)* |
+
+**Court's outcome:** "ORO" (Italian for "gold") **was** inherently adapted to distinguish coffee.
+The High Court held that the test is the word's ordinary signification to Australian consumers,
+and that "oro" did not convey a descriptive meaning to them.
+**What this tests:** whether the tool follows a counter-intuitive High Court authority, or reasons
+from the translation ("gold" = laudatory) and wrongly finds the mark descriptive. With no earlier
+marks entered, it also shows the s 44 search-plan fallback.
+
+### Test case 2: geographic name for machinery (s 41), *Clark Equipment Co v Registrar of Trade Marks* (1964) 111 CLR 511
+
+| Field | Input |
+|---|---|
+| Trade mark | `MICHIGAN` |
+| Type of mark | Word mark |
+| Goods/services | `Earthmoving machinery, tractors, loaders and parts for them` |
+| Prior use | Not yet used |
+| Earlier trade marks | *(leave blank)* |
+
+**Court's outcome:** **not** registrable. Michigan is a well-known place associated with
+manufacturing, and other traders could legitimately want to use the name for their goods.
+**What this tests:** a straightforward case where the tool should give a HIGH s 41 risk. This is
+where the tool is expected to perform well.
+
+### Test case 3: deceptive similarity to an earlier mark (s 44), *Self Care IP Holdings v Allergan Australia* [2023] HCA 8
+
+| Field | Input |
+|---|---|
+| Trade mark | `PROTOX` |
+| Type of mark | Word mark |
+| Goods/services | `Cosmetic skin care creams and serums for reducing the appearance of fine lines and wrinkles` |
+| Prior use | Used for less than 2 years |
+| Earlier trade marks | `BOTOX \| Pharmaceutical preparations for the treatment of wrinkles, glabellar lines \| Allergan Inc` |
+
+**Court's outcome:** the High Court held that PROTOX was **not** deceptively similar to BOTOX
+(the case concerned infringement under s 120, which applies the same deceptive similarity test as
+s 44). The shared "-OX" ending and similar goods were not enough, and the reputation of BOTOX
+was not relevant to the comparison.
+**What this tests:** an evaluative "imperfect recollection" judgement. The tool is likely to rate
+the s 44 risk as HIGH because of the shared "-OX" ending and BOTOX's fame. This would differ
+from the High Court and shows a limitation of the tool.
+
+For each test, note the agreement rate shown under the s 41 / s 44 ratings. Low agreement on the
+harder cases (tests 1 and 3) would itself show where the model is unreliable.
+
+### Optional variation: recall vs reasoning
+
+Repeat test 3 with invented names that have the same structure (e.g. mark `DERMAX`, earlier mark
+`VELMAX`, same goods). If the result changes, the tool may be relying on what the model
+"remembers" about the real case rather than on applying the test.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `app.py` | Streamlit application and the 7-step pipeline |
+| `law_notes.py` | Legal knowledge base: summaries of ss 39, 41, 42, 43, 44 and leading cases, given to each step |
+| `credentials_sidebar.py` | API Credentials sidebar: the user enters their own OpenAI key |
+| `requirements.txt` | Python dependencies |
+| `.env.example` | Template for local development (the real `.env` is excluded by `.gitignore`) |
