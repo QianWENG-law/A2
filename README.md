@@ -40,8 +40,8 @@ how confident the tool is: low agreement flags a borderline mark that needs a pr
 ## Running the app
 
 1. Open the deployed URL above.
-2. Enter your own OpenAI API key in the sidebar. The app does not include any API key.
-3. Fill in the form and click **Run pre-check** (a run takes roughly 30–60 seconds).
+2. Enter your own OpenAI API key in the sidebar. 
+3. Fill in the form and click **Run pre-check** .
 
 ## Test cases
 
@@ -51,7 +51,7 @@ uploaded. **Quickest way:** choose the test case in the "Load an example" drop-d
 the page, which fills in the form; or copy the inputs below into the form. 
 Use the default settings (reflection on, asked 3 times) unless stated.
 
-### Test case 1: foreign word for coffee (s 41), *Cantarella Bros v Modena Trading* [2014] HCA 48
+### Test case 1:  *Cantarella Bros v Modena Trading* [2014] HCA 48
 
 | Field | Input |
 |---|---|
@@ -68,7 +68,7 @@ and that "oro" did not convey a descriptive meaning to them.
 from the translation ("gold" = laudatory) and wrongly finds the mark descriptive. With no earlier
 marks entered, it also shows the s 44 search-plan fallback.
 
-### Test case 2: geographic name for machinery (s 41), *Clark Equipment Co v Registrar of Trade Marks* (1964) 111 CLR 511
+### Test case 2:  *Clark Equipment Co v Registrar of Trade Marks* (1964) 111 CLR 511
 
 | Field | Input |
 |---|---|
@@ -83,7 +83,7 @@ manufacturing, and other traders could legitimately want to use the name for the
 **What this tests:** a straightforward case where the tool should give a HIGH s 41 risk. This is
 where the tool is expected to perform well.
 
-### Test case 3: deceptive similarity to an earlier mark (s 44), *Self Care IP Holdings v Allergan Australia* [2023] HCA 8
+### Test case 3:  *Self Care IP Holdings v Allergan Australia* [2023] HCA 8
 
 | Field | Input |
 |---|---|
