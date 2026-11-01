@@ -36,38 +36,12 @@ answers to the same question. Asking several times and taking the majority makes
 stable. The agreement rate (e.g. "2 of 3 assessments rated this HIGH") also tells the user
 how confident the tool is: low agreement flags a borderline mark that needs a professional opinion.
 
-## Techniques used
-
-| Technique | Where it is used | Why |
-|---|---|---|
-| Prompt chaining | Steps 1–7 run in sequence; each step receives the output of step 1 | Breaks the legal test into discrete, checkable sub-processes |
-| If-then rule logic (Lab 1) | `overall_conclusion()` decides the overall outcome from the ground-by-ground ratings | The final legal conclusion is controlled by fixed rules, not left to the model, and is shown to the user ("How this conclusion was reached") |
-| Grounding in a legal knowledge base | `law_notes.py`: each step receives only the law for that ground | Reduces hallucination and keeps the model to the Australian statutory tests and leading cases |
-| Structured (JSON) outputs | Every AI call returns JSON with fixed keys | Lets the code read risk ratings reliably and apply the rules |
-| Self-consistency | Steps 3 (s 41) and 5 (s 44) are asked N times; majority vote | Stabilises evaluative judgements and gives a confidence score |
-| Reflection loop (Lab 2) | Step 6 reviewer flags errors; flagged steps are re-run with its comments | Lets the system check and correct its own reasoning |
-| Transparency | Step-by-step tab, reviewer tab and full AI call log | The user can see how each conclusion was reached |
-
-**Inputs:** example loader (fills the form with a test case), text inputs (mark, goods/services, earlier marks), drop-downs (mark type, prior use),
-checkbox (reflection on/off), slider (number of self-consistency samples). The model is fixed to gpt-4o-mini.
-**Outputs:** overall risk rating with the rules applied, risk rating and confidence (agreement rate) per ground, step-by-step analysis, reviewer
-comments, AI call log, and a downloadable Markdown report.
-
-> This tool is a study project and gives general, preliminary information only. It is not legal advice.
-> It does **not** search the IP Australia register: s 44 is assessed only against marks the user enters.
 
 ## Running the app
 
 1. Open the deployed URL above.
 2. Enter your own OpenAI API key in the sidebar. The app does not include any API key.
 3. Fill in the form and click **Run pre-check** (a run takes roughly 30–60 seconds).
-
-Run locally:
-
-```bash
-pip install -r requirements.txt
-streamlit run home.py
-```
 
 ## Test cases
 

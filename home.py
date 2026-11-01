@@ -1,11 +1,3 @@
-"""
-Australian Trade Mark Registrability Pre-Check (LAWS90286 Assignment 2)
-
-Steps: 1 interpret application -> 2 ss 39/42 -> 3 s 41 -> 4 s 43 -> 5 s 44
-       -> 6 reviewer reflection (re-run flagged steps) -> 7 final report.
-Steps 3 and 5 use self-consistency (asked N times, majority vote).
-"""
-
 import json
 from collections import Counter
 from datetime import date
