@@ -48,8 +48,7 @@ how confident the tool is: low agreement flags a borderline mark that needs a pr
 Each test case is based on the facts of a decided Australian case, so the tool's output can be
 compared with the court's actual conclusion. The app has no file upload, so no files need to be
 uploaded. **Quickest way:** choose the test case in the "Load an example" drop-down at the top of
-the page, which fills in the form; or copy the inputs below into the form. The same inputs, with a table for
-recording observed results, are in the `test_cases/` folder.
+the page, which fills in the form; or copy the inputs below into the form. 
 Use the default settings (reflection on, asked 3 times) unless stated.
 
 ### Test case 1: foreign word for coffee (s 41), *Cantarella Bros v Modena Trading* [2014] HCA 48
@@ -119,4 +118,4 @@ Repeat test 3 with invented names that have the same structure (e.g. mark `DERMA
 | `law_notes.py` | Legal knowledge base: summaries of ss 39, 41, 42, 43, 44 and leading cases, given to each step |
 | `sidebar.py` | API Credentials sidebar: the user enters their own OpenAI key |
 | `requirements.txt` | Python dependencies |
-| `test_cases/` | One file per test case: inputs, the court's outcome, what it tests, and a results table |
+

@@ -21,8 +21,6 @@ SYSTEM_PROMPT = (
     "LAW NOTES. Be specific and honest about uncertainty. Reply with a single valid JSON object."
 )
 
-
-# ---------------------------------------------------------------- AI helpers
 def call_ai(client, task, payload, law_key=None, temperature=0.2, label=""):
     law = f"LAW NOTES:\n{LAW_NOTES[law_key]}\n\n" if law_key else ""
     response = client.chat.completions.create(
@@ -71,7 +69,6 @@ def self_consistency(run_once, n, vote_key=None):
     return chosen
 
 
-# ---------------------------------------------------------------- Steps
 def step1_interpret(client, app):
     task = """Step 1: Interpret the trade mark application.
 Return JSON with keys:
@@ -174,7 +171,6 @@ Where a step has a "consistency" record, say how many assessments agreed (e.g. "
                                   "conclusion": conclusion})
 
 
-# ---------------------------------------------------------------- Rule-based conclusion
 def overall_conclusion(analysis, application):
     """
     If-then rules decide the overall outcome from the AI's ground-by-ground ratings,
@@ -212,7 +208,6 @@ def overall_conclusion(analysis, application):
     return {"overall_risk": overall, "headline": headline, "rules_applied": rules}
 
 
-# ---------------------------------------------------------------- UI helpers
 def parse_earlier_marks(text):
     marks = []
     for line in text.splitlines():
@@ -238,7 +233,6 @@ def risk_badge(label, result):
             st.caption(f"{name}{int(c['agreement'] * 100)}% agreement ({votes}){note}")
 
 
-# ---------------------------------------------------------------- Page
 st.set_page_config(page_title="Trade Mark Pre-Check", page_icon="™️")
 
 api_key = render_credentials_sidebar()

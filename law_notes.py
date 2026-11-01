@@ -1,12 +1,3 @@
-"""
-Legal knowledge base used by the tool.
-
-Short summaries of the grounds for rejection in the Trade Marks Act 1995 (Cth)
-and the leading tests. Each analysis step is given ONLY the notes relevant to
-that step, so the model is grounded in the correct legal framework rather than
-relying on its general memory.
-"""
-
 LAW_NOTES = {
     "classification": """
 NICE CLASSIFICATION (used by IP Australia)
