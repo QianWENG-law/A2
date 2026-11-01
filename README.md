@@ -26,7 +26,6 @@ the legal notes relevant to that step (see `law_notes.py`):
 | 6 | **Reflection:** a "reviewing partner" checks steps 1–5; any step it flags is re-run once with its comments | — |
 | ⚖ | **Rule-based conclusion (code, no AI):** if any ground is HIGH → overall HIGH; else if any is MEDIUM → MEDIUM; otherwise LOW. Extra rules flag s 41(4) evidence of use and an unassessed s 44 | ss 41(4), 44 |
 | 7 | Final report in plain English, following the rule-based conclusion | — |
-```
 
 Each run makes **at least 6 AI calls** (about 11 with the default settings and one earlier mark).
 The "AI call log" tab shows every call, and the "Reviewer" tab shows what changed after reflection.
