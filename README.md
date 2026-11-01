@@ -36,7 +36,7 @@ stable. The agreement rate (e.g. "2 of 3 assessments rated this HIGH") also tell
 how confident the tool is: low agreement flags a borderline mark that needs a professional opinion.
 
 **Inputs:** text inputs (mark, goods/services, earlier marks), drop-downs (mark type, prior use),
-checkbox (reflection on/off), slider (number of self-consistency samples), model selection.
+checkbox (reflection on/off), slider (number of self-consistency samples). The model is fixed to gpt-4o-mini.
 **Outputs:** overall risk rating, risk rating and confidence (agreement rate) per ground, step-by-step analysis, reviewer
 comments, AI call log, and a downloadable Markdown report.
 
@@ -46,22 +46,23 @@ comments, AI call log, and a downloadable Markdown report.
 ## Running the app
 
 1. Open the deployed URL above.
-2. Enter your own OpenAI API key in the sidebar (**API Credentials**). The app does not include any API key.
+2. Enter your own OpenAI API key in the sidebar. The app does not include any API key.
 3. Fill in the form and click **Run pre-check** (a run takes roughly 30–60 seconds).
 
 Run locally:
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env    # optional: put your key in .env for local development
-streamlit run app.py
+streamlit run home.py
 ```
 
 ## Test cases
 
 Each test case is based on the facts of a decided Australian case, so the tool's output can be
-compared with the court's actual conclusion. No files need to be uploaded. Copy the inputs into
-the form exactly as shown. Use the default settings (gpt-4o-mini, reflection on) unless stated.
+compared with the court's actual conclusion. The app has no file upload, so no files need to be
+uploaded: copy the inputs into the form exactly as shown. The same inputs, with a table for
+recording observed results, are in the `test_cases/` folder.
+Use the default settings (reflection on, asked 3 times) unless stated.
 
 ### Test case 1: foreign word for coffee (s 41), *Cantarella Bros v Modena Trading* [2014] HCA 48
 
@@ -126,8 +127,8 @@ Repeat test 3 with invented names that have the same structure (e.g. mark `DERMA
 
 | File | Purpose |
 |---|---|
-| `app.py` | Streamlit application and the 7-step pipeline |
+| `home.py` | Streamlit application and the 7-step pipeline |
 | `law_notes.py` | Legal knowledge base: summaries of ss 39, 41, 42, 43, 44 and leading cases, given to each step |
 | `credentials_sidebar.py` | API Credentials sidebar: the user enters their own OpenAI key |
 | `requirements.txt` | Python dependencies |
-| `.env.example` | Template for local development (the real `.env` is excluded by `.gitignore`) |
+| `test_cases/` | One file per test case: inputs, the court's outcome, what it tests, and a results table |

@@ -11,7 +11,7 @@ Based on *Clark Equipment Co v Registrar of Trade Marks* (1964) 111 CLR 511.
 - **Goods/services:** `Earthmoving machinery, tractors, loaders and parts for them`
 - **Has the mark already been used in Australia?:** Not yet used
 - **Earlier trade marks:** *(leave blank)*
-- **Sidebar:** gpt-4o-mini, reflection on, self-consistency 3
+- **Sidebar:** reflection on, asked 3 times
 
 ## Court's outcome
 

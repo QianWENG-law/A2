@@ -11,7 +11,7 @@ Based on *Cantarella Bros Pty Ltd v Modena Trading Pty Ltd* [2014] HCA 48.
 - **Goods/services:** `Coffee, coffee beans, ground coffee and espresso coffee blends sold to cafes, restaurants and retailers`
 - **Has the mark already been used in Australia?:** Used for 2+ years
 - **Earlier trade marks:** *(leave blank)*
-- **Sidebar:** gpt-4o-mini, reflection on, self-consistency 3
+- **Sidebar:** reflection on, asked 3 times
 
 ## Court's outcome
 

@@ -16,7 +16,7 @@ Based on *Self Care IP Holdings Pty Ltd v Allergan Australia Pty Ltd* [2023] HCA
 BOTOX | Pharmaceutical preparations for the treatment of wrinkles, glabellar lines | Allergan Inc
 ```
 
-- **Sidebar:** gpt-4o-mini, reflection on, self-consistency 3
+- **Sidebar:** reflection on, asked 3 times
 
 ## Court's outcome
 
