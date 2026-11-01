@@ -21,10 +21,11 @@ the legal notes relevant to that step (see `law_notes.py`):
 | 2 | Prohibited signs; scandalous matter; use contrary to law | ss 39, 42 | 1 |
 | 3 | Capacity to distinguish | s 41; *Clark Equipment*; *Cantarella* | 1 |
 | 4 | Deceptive or confusing connotation | s 43 | 1 |
-| 5 | Conflict with earlier marks (one call per earlier mark; if none are entered, a search plan) | s 44; *Shell v Esso*; *Australian Woollen Mills*; *Self Care v Allergan* | 1+ |
+| 5 | Conflict with earlier marks (one call per earlier mark; if none are entered, s 44 is marked "not assessed" and a search plan is given) | s 44; *Shell v Esso*; *Australian Woollen Mills*; *Self Care v Allergan* | 1+ |
 | ↳ | **Self-consistency (steps 3 and 5):** the evaluative questions are asked N times independently (default 3, adjustable in the sidebar); the majority risk rating is used and the agreement rate is shown as a confidence score | — | ×N |
 | 6 | **Reflection:** a "reviewing partner" checks steps 1–5; any step it flags is re-run once with its comments | — | 1 (+ re-runs) |
-| 7 | Final report in plain English | — | 1 |
+| ⚖ | **Rule-based conclusion (code, no AI):** if any ground is HIGH → overall HIGH; else if any is MEDIUM → MEDIUM; otherwise LOW. Extra rules flag s 41(4) evidence of use and an unassessed s 44 | ss 41(4), 44 | 0 |
+| 7 | Final report in plain English, following the rule-based conclusion | — | 1 |
 
 Each run makes **at least 6 AI calls** (about 11 with the default settings and one earlier mark).
 The "AI call log" tab shows every call, and the "Reviewer" tab shows what changed after reflection.
@@ -35,9 +36,21 @@ answers to the same question. Asking several times and taking the majority makes
 stable. The agreement rate (e.g. "2 of 3 assessments rated this HIGH") also tells the user
 how confident the tool is: low agreement flags a borderline mark that needs a professional opinion.
 
-**Inputs:** text inputs (mark, goods/services, earlier marks), drop-downs (mark type, prior use),
+## Techniques used
+
+| Technique | Where it is used | Why |
+|---|---|---|
+| Prompt chaining | Steps 1–7 run in sequence; each step receives the output of step 1 | Breaks the legal test into discrete, checkable sub-processes |
+| If-then rule logic (Lab 1) | `overall_conclusion()` decides the overall outcome from the ground-by-ground ratings | The final legal conclusion is controlled by fixed rules, not left to the model, and is shown to the user ("How this conclusion was reached") |
+| Grounding in a legal knowledge base | `law_notes.py`: each step receives only the law for that ground | Reduces hallucination and keeps the model to the Australian statutory tests and leading cases |
+| Structured (JSON) outputs | Every AI call returns JSON with fixed keys | Lets the code read risk ratings reliably and apply the rules |
+| Self-consistency | Steps 3 (s 41) and 5 (s 44) are asked N times; majority vote | Stabilises evaluative judgements and gives a confidence score |
+| Reflection loop (Lab 2) | Step 6 reviewer flags errors; flagged steps are re-run with its comments | Lets the system check and correct its own reasoning |
+| Transparency | Step-by-step tab, reviewer tab and full AI call log | The user can see how each conclusion was reached |
+
+**Inputs:** example loader (fills the form with a test case), text inputs (mark, goods/services, earlier marks), drop-downs (mark type, prior use),
 checkbox (reflection on/off), slider (number of self-consistency samples). The model is fixed to gpt-4o-mini.
-**Outputs:** overall risk rating, risk rating and confidence (agreement rate) per ground, step-by-step analysis, reviewer
+**Outputs:** overall risk rating with the rules applied, risk rating and confidence (agreement rate) per ground, step-by-step analysis, reviewer
 comments, AI call log, and a downloadable Markdown report.
 
 > This tool is a study project and gives general, preliminary information only. It is not legal advice.
@@ -60,7 +73,8 @@ streamlit run home.py
 
 Each test case is based on the facts of a decided Australian case, so the tool's output can be
 compared with the court's actual conclusion. The app has no file upload, so no files need to be
-uploaded: copy the inputs into the form exactly as shown. The same inputs, with a table for
+uploaded. **Quickest way:** choose the test case in the "Load an example" drop-down at the top of
+the page, which fills in the form; or copy the inputs below into the form. The same inputs, with a table for
 recording observed results, are in the `test_cases/` folder.
 Use the default settings (reflection on, asked 3 times) unless stated.
 
@@ -129,6 +143,6 @@ Repeat test 3 with invented names that have the same structure (e.g. mark `DERMA
 |---|---|
 | `home.py` | Streamlit application and the 7-step pipeline |
 | `law_notes.py` | Legal knowledge base: summaries of ss 39, 41, 42, 43, 44 and leading cases, given to each step |
-| `credentials_sidebar.py` | API Credentials sidebar: the user enters their own OpenAI key |
+| `sidebar.py` | API Credentials sidebar: the user enters their own OpenAI key |
 | `requirements.txt` | Python dependencies |
 | `test_cases/` | One file per test case: inputs, the court's outcome, what it tests, and a results table |

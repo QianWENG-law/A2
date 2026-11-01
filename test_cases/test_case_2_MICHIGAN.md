@@ -2,7 +2,9 @@
 
 Based on *Clark Equipment Co v Registrar of Trade Marks* (1964) 111 CLR 511.
 
-## Inputs (copy into the form)
+## Inputs
+
+Choose this case in the "Load an example" drop-down, or copy the inputs into the form.
 
 - **Trade mark:** `MICHIGAN`
 - **Type of mark:** Word mark

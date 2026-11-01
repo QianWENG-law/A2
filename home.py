@@ -125,8 +125,10 @@ def step5_s44(client, app, s1, earlier_marks, n):
         task = """Step 5: No earlier marks were supplied, so section 44 cannot be assessed.
 Prepare a search plan for IP Australia's Australian Trade Mark Search.
 Return JSON with keys: "search_terms" (list), "classes_to_search" (list of int),
-"what_to_look_for", "risk": "MEDIUM", "note" (explain the limitation)."""
-        return [call_ai(client, task, {"application": app, "step1": s1}, "s44")]
+"what_to_look_for", "note" (explain the limitation)."""
+        plan = call_ai(client, task, {"application": app, "step1": s1}, "s44")
+        plan.update({"not_assessed": True, "risk": "N/A"})
+        return [plan]
 
     task = """Step 5: Assess section 44 against ONE earlier trade mark.
 Compare: (a) whether the goods/services are the same, similar or closely related;
@@ -170,14 +172,52 @@ Reviewer's comment: {comment}"""
     return revised
 
 
-def step7_report(client, app, analysis, review):
+def step7_report(client, app, analysis, review, conclusion):
     task = """Step 7: Write the final registrability report for the applicant (a non-lawyer).
-Return JSON with keys: "overall_risk" ("LOW" | "MEDIUM" | "HIGH"),
-"headline" (one sentence: is this mark likely to be registered?),
-"report_markdown" with headings ## Summary, ## Classes, ## Ground-by-ground assessment,
+The overall conclusion has already been decided by fixed rules (see "conclusion"): follow it exactly.
+Return JSON with key "report_markdown" with headings ## Summary, ## Classes, ## Ground-by-ground assessment,
 ## Recommendations, ## Limitations. Use plain English and section numbers; do not invent cases.
 Where a step has a "consistency" record, say how many assessments agreed (e.g. "2 of 3 rated this HIGH")."""
-    return call_ai(client, task, {"application": app, "analysis": analysis, "review": review})
+    return call_ai(client, task, {"application": app, "analysis": analysis, "review": review,
+                                  "conclusion": conclusion})
+
+
+# ---------------------------------------------------------------- Rule-based conclusion
+def overall_conclusion(analysis, application):
+    """
+    If-then rules decide the overall outcome from the AI's ground-by-ground ratings,
+    so the final legal conclusion is controlled by code, not by the model.
+    """
+    grounds = {
+        "s 39 / s 42": [analysis["step2_s39_s42"]],
+        "s 41": [analysis["step3_s41"]],
+        "s 43": [analysis["step4_s43"]],
+        "s 44": [r for r in analysis["step5_s44"] if not r.get("not_assessed")],
+    }
+    ratings = {g: max((normalise_risk(r.get("risk")) for r in items), key=RISK_LEVELS.index)
+               for g, items in grounds.items() if items}
+    high = [g for g, r in ratings.items() if r == "HIGH"]
+    medium = [g for g, r in ratings.items() if r == "MEDIUM"]
+
+    if high:
+        overall = "HIGH"
+        headline = f"Likely to be refused unless the issues under {', '.join(high)} are addressed."
+    elif medium:
+        overall = "MEDIUM"
+        headline = f"Registrable, but may face objections under {', '.join(medium)}."
+    else:
+        overall = "LOW"
+        headline = "Likely to be registrable on the grounds assessed."
+
+    rules = [f"{g}: {r}" for g, r in ratings.items()]
+    if "s 44" not in ratings:
+        rules.append("s 44: not assessed (no earlier marks entered) — search the register before filing")
+    s41_adapt = str(analysis["step3_s41"].get("inherent_adaptation", "")).lower()
+    if ratings.get("s 41") in ("HIGH", "MEDIUM") and application["prior_use_in_australia"] == "Used for 2+ years":
+        rules.append("s 41(4): the mark has been used for 2+ years, so evidence of use may overcome the objection")
+    elif s41_adapt == "not at all" and application["prior_use_in_australia"] == "Not yet used":
+        rules.append("s 41: not inherently adapted and not yet used — a different or more distinctive mark is advisable")
+    return {"overall_risk": overall, "headline": headline, "rules_applied": rules}
 
 
 # ---------------------------------------------------------------- UI helpers
@@ -192,6 +232,9 @@ def parse_earlier_marks(text):
 
 def risk_badge(label, result):
     items = result if isinstance(result, list) else [result]
+    if all(r.get("not_assessed") for r in items):
+        st.markdown(f"**{label}:** ⚪ NOT ASSESSED (no earlier marks entered)")
+        return
     risk = max((normalise_risk(r.get("risk")) for r in items), key=RISK_LEVELS.index)
     st.markdown(f"**{label}:** {RISK_ICON[risk]} {risk}")
     for r in items:
@@ -214,19 +257,52 @@ with st.sidebar:
 st.title("Australian Trade Mark Pre-Check")
 st.caption(DISCLAIMER)
 
+EXAMPLES = {
+    "ORO for coffee (Cantarella, s 41)": {
+        "mark": "ORO", "mark_type": "Word mark", "applicant": "Cantarella Bros Pty Ltd",
+        "goods": "Coffee, coffee beans, ground coffee and espresso coffee blends sold to cafes, restaurants and retailers",
+        "use": "Used for 2+ years", "earlier": ""},
+    "MICHIGAN for machinery (Clark Equipment, s 41)": {
+        "mark": "MICHIGAN", "mark_type": "Word mark", "applicant": "Clark Equipment Co",
+        "goods": "Earthmoving machinery, tractors, loaders and parts for them",
+        "use": "Not yet used", "earlier": ""},
+    "PROTOX vs BOTOX (Self Care v Allergan, s 44)": {
+        "mark": "PROTOX", "mark_type": "Word mark", "applicant": "Self Care IP Holdings Pty Ltd",
+        "goods": "Cosmetic skin care creams and serums for reducing the appearance of fine lines and wrinkles",
+        "use": "Used for less than 2 years",
+        "earlier": "BOTOX | Pharmaceutical preparations for the treatment of wrinkles, glabellar lines | Allergan Inc"},
+}
+FIELDS = {"mark": "", "mark_type": "Word mark", "logo": "", "applicant": "", "goods": "",
+          "use": "Not yet used", "earlier": ""}
+for k, v in FIELDS.items():
+    st.session_state.setdefault(k, v)
+
+
+def load_example():
+    choice = st.session_state["example"]
+    st.session_state.update({**FIELDS, **EXAMPLES.get(choice, {})})
+
+
+st.selectbox("Load an example (optional)", ["—"] + list(EXAMPLES), key="example", on_change=load_example,
+             help="Fills in the form with the facts of a decided case, so you can compare the result with the court.")
+
 with st.form("application"):
-    mark = st.text_input("Trade mark", placeholder="e.g. ORO")
-    mark_type = st.selectbox("Type of mark", ["Word mark", "Word + logo"])
-    logo = st.text_input("Logo description (optional)")
-    applicant = st.text_input("Applicant (optional)")
-    goods = st.text_area("Goods and/or services", placeholder="e.g. Coffee beans and roasted coffee")
-    use = st.selectbox(
-        "Prior use in Australia", ["Not yet used", "Used for less than 2 years", "Used for 2+ years"]
-    )
+    mark = st.text_input("Trade mark", key="mark", placeholder="e.g. ORO",
+                         help="The word(s) you want to register, exactly as you will use them.")
+    mark_type = st.selectbox("Type of mark", ["Word mark", "Word + logo"], key="mark_type")
+    logo = st.text_input("Logo description (optional)", key="logo",
+                         help="Only for word + logo marks: describe colours, shapes or images.")
+    applicant = st.text_input("Applicant (optional)", key="applicant")
+    goods = st.text_area("Goods and/or services", key="goods", placeholder="e.g. Coffee beans and roasted coffee",
+                         help="Be specific: the tool uses this to choose the Nice classes and to judge "
+                              "whether the mark describes the goods.")
+    use = st.selectbox("Prior use in Australia", ["Not yet used", "Used for less than 2 years", "Used for 2+ years"],
+                       key="use", help="Evidence of use can help overcome a s 41 objection.")
     earlier_text = st.text_area(
-        "Earlier trade marks (optional, one per line: MARK | goods/services | owner)",
+        "Earlier trade marks (optional, one per line: MARK | goods/services | owner)", key="earlier",
         placeholder="BOTOX | pharmaceutical preparations for treating wrinkles | Allergan Inc",
-    )
+        help="Search IP Australia's Australian Trade Mark Search for similar marks and enter them here. "
+             "If left blank, s 44 is not assessed and a search plan is given instead.")
     submitted = st.form_submit_button("Run pre-check", type="primary")
 
 if submitted:
@@ -277,25 +353,30 @@ if submitted:
                         analysis[step] = redo_step(client, application, s1, step, analysis[step],
                                                    comment, earlier_marks)
 
+            conclusion = overall_conclusion(analysis, application)
             st.write("Step 7 — writing the report")
-            report = step7_report(client, application, analysis, review)
+            report = step7_report(client, application, analysis, review, conclusion)
             status.update(label=f"Done — {len(st.session_state['call_log'])} AI calls", state="complete")
     except Exception as exc:
         st.error(f"The assessment could not be completed: {exc}")
         st.stop()
 
     st.session_state["result"] = {"application": application, "analysis": analysis,
-                                  "first_draft": first_draft, "review": review, "report": report}
+                                  "first_draft": first_draft, "review": review, "report": report,
+                                  "conclusion": conclusion}
 
 # ---------------------------------------------------------------- Output
 if "result" in st.session_state:
     res = st.session_state["result"]
-    analysis, report = res["analysis"], res["report"]
-    overall = normalise_risk(report.get("overall_risk"))
+    analysis, report, conclusion = res["analysis"], res["report"], res["conclusion"]
+    overall = conclusion["overall_risk"]
 
     st.divider()
     st.subheader(f"Overall risk of refusal: {RISK_ICON[overall]} {overall}")
-    st.markdown(f"**{report.get('headline', '')}**")
+    st.markdown(f"**{conclusion['headline']}**")
+    with st.expander("How this conclusion was reached (rules applied)"):
+        st.markdown("- If any ground is HIGH → overall HIGH; else if any is MEDIUM → MEDIUM; otherwise LOW.\n"
+                    + "\n".join(f"- {r}" for r in conclusion["rules_applied"]))
     risk_badge("s 39 / s 42", analysis["step2_s39_s42"])
     risk_badge("s 41", analysis["step3_s41"])
     risk_badge("s 43", analysis["step4_s43"])
@@ -308,7 +389,7 @@ if "result" in st.session_state:
         st.download_button(
             "Download report (.md)",
             f"# Trade Mark Pre-Check: {res['application']['mark']}\n\nDate: {date.today()}\n\n"
-            f"> {DISCLAIMER}\n\n**Overall risk:** {overall}\n\n{report_md}\n",
+            f"> {DISCLAIMER}\n\n**Overall risk:** {overall} — {conclusion['headline']}\n\n{report_md}\n",
             file_name=f"precheck_{res['application']['mark'].replace(' ', '_')}.md",
         )
     with tab_steps:

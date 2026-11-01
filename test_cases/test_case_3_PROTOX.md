@@ -2,7 +2,9 @@
 
 Based on *Self Care IP Holdings Pty Ltd v Allergan Australia Pty Ltd* [2023] HCA 8.
 
-## Inputs (copy into the form)
+## Inputs
+
+Choose this case in the "Load an example" drop-down, or copy the inputs into the form.
 
 - **Trade mark:** `PROTOX`
 - **Type of mark:** Word mark
