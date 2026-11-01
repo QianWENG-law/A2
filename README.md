@@ -30,12 +30,11 @@ the legal notes relevant to that step (see `law_notes.py`):
 Each run makes **at least 6 AI calls** (about 11 with the default settings and one earlier mark).
 The "AI call log" tab shows every call, and the "Reviewer" tab shows what changed after reflection.
 
-**Why self-consistency?** Whether a mark is "inherently adapted to distinguish" (s 41) or
+Whether a mark is "inherently adapted to distinguish" (s 41) or
 "deceptively similar" (s 44) is an evaluative judgement, and a language model can give different
 answers to the same question. Asking several times and taking the majority makes the result more
 stable. The agreement rate (e.g. "2 of 3 assessments rated this HIGH") also tells the user
 how confident the tool is: low agreement flags a borderline mark that needs a professional opinion.
-
 
 ## Running the app
 
@@ -49,7 +48,6 @@ Each test case is based on the facts of a decided Australian case, so the tool's
 compared with the court's actual conclusion. The app has no file upload, so no files need to be
 uploaded. **Quickest way:** choose the test case in the "Load an example" drop-down at the top of
 the page, which fills in the form; or copy the inputs below into the form. 
-Use the default settings (reflection on, asked 3 times) unless stated.
 
 ### Test case 1:  *Cantarella Bros v Modena Trading* [2014] HCA 48
 
