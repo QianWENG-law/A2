@@ -15,17 +15,18 @@ ground and suggesting how to reduce it.
 The legal task is broken into discrete steps. Each step is a separate AI call that receives only
 the legal notes relevant to that step (see `law_notes.py`):
 
-| Step | Sub-process | Legal basis | AI calls |
-|---|---|---|---|
-| 1 | Interpret the application: meaning of the words, Nice classes, target consumers | Nice Classification | 1 |
-| 2 | Prohibited signs; scandalous matter; use contrary to law | ss 39, 42 | 1 |
-| 3 | Capacity to distinguish | s 41; *Clark Equipment*; *Cantarella* | 1 |
-| 4 | Deceptive or confusing connotation | s 43 | 1 |
-| 5 | Conflict with earlier marks (one call per earlier mark; if none are entered, s 44 is marked "not assessed" and a search plan is given) | s 44; *Shell v Esso*; *Australian Woollen Mills*; *Self Care v Allergan* | 1+ |
-| ↳ | **Self-consistency (steps 3 and 5):** the evaluative questions are asked N times independently (default 3, adjustable in the sidebar); the majority risk rating is used and the agreement rate is shown as a confidence score | — | ×N |
-| 6 | **Reflection:** a "reviewing partner" checks steps 1–5; any step it flags is re-run once with its comments | — | 1 (+ re-runs) |
-| ⚖ | **Rule-based conclusion (code, no AI):** if any ground is HIGH → overall HIGH; else if any is MEDIUM → MEDIUM; otherwise LOW. Extra rules flag s 41(4) evidence of use and an unassessed s 44 | ss 41(4), 44 | 0 |
-| 7 | Final report in plain English, following the rule-based conclusion | — | 1 |
+| Step | Sub-process | Legal basis |
+|---|---|---|
+| 1 | Interpret the application: meaning of the words, Nice classes, target consumers | Nice Classification |
+| 2 | Prohibited signs; scandalous matter; use contrary to law | ss 39, 42 |
+| 3 | Capacity to distinguish | s 41; *Clark Equipment*; *Cantarella* |
+| 4 | Deceptive or confusing connotation | s 43 |
+| 5 | Conflict with earlier marks (one call per earlier mark; if none are entered, s 44 is marked "not assessed" and a search plan is given) | s 44; *Shell v Esso*; *Australian Woollen Mills*; *Self Care v Allergan* |
+| ↳ | **Self-consistency (steps 3 and 5):** the evaluative questions are asked N times independently (default 3, adjustable in the sidebar); the majority risk rating is used and the agreement rate is shown as a confidence score | — |
+| 6 | **Reflection:** a "reviewing partner" checks steps 1–5; any step it flags is re-run once with its comments | — |
+| ⚖ | **Rule-based conclusion (code, no AI):** if any ground is HIGH → overall HIGH; else if any is MEDIUM → MEDIUM; otherwise LOW. Extra rules flag s 41(4) evidence of use and an unassessed s 44 | ss 41(4), 44 |
+| 7 | Final report in plain English, following the rule-based conclusion | — |
+```
 
 Each run makes **at least 6 AI calls** (about 11 with the default settings and one earlier mark).
 The "AI call log" tab shows every call, and the "Reviewer" tab shows what changed after reflection.
