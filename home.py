@@ -8,9 +8,10 @@ from openai import OpenAI
 from sidebar import render_credentials_sidebar
 from law_notes import LAW_NOTES
 
+
+# Settings and fixed text used throughout the app.
 MODEL = "gpt-4o-mini"
-RISK_LEVELS = ["LOW", "MEDIUM", "HIGH"]
-RISK_ICON = {"LOW": "🟢", "MEDIUM": "🟠", "HIGH": "🔴"}
+RISK_LEVELS = ["LOW", "MEDIUM", "HIGH"]  # ordered from lowest to highest risk
 DISCLAIMER = (
     "Preliminary information only, not legal advice. The IP Australia register is not searched: "
     "s 44 only compares the earlier marks you enter."
@@ -21,7 +22,15 @@ SYSTEM_PROMPT = (
     "LAW NOTES. Be specific and honest about uncertainty. Reply with a single valid JSON object."
 )
 
+
+# AI helpers: one function makes every AI call; another runs the self-consistency vote.
+
 def call_ai(client, task, payload, law_key=None, temperature=0.2, label=""):
+    """Make one AI call and return its JSON answer.
+
+    The relevant part of the legal knowledge base (law_notes.py) is attached to the prompt,
+    and every call is saved to the call log so the user can see it in the "AI call log" tab.
+    """
     law = f"LAW NOTES:\n{LAW_NOTES[law_key]}\n\n" if law_key else ""
     response = client.chat.completions.create(
         model=MODEL,
@@ -42,19 +51,25 @@ def call_ai(client, task, payload, law_key=None, temperature=0.2, label=""):
 
 
 def normalise_risk(value):
+    """Turn the model's risk rating into LOW / MEDIUM / HIGH (MEDIUM if unclear)."""
     value = str(value or "").upper()
     return value if value in RISK_LEVELS else "MEDIUM"
 
 
 def self_consistency(run_once, n, vote_key=None):
-    """Ask n times at a higher temperature and keep the majority risk rating."""
+    """Ask the same question n times and keep the majority risk rating.
+
+    A higher temperature (0.8) lets the answers differ, so the vote is meaningful.
+    The agreement rate (e.g. 2 of 3) is recorded as a confidence score.
+    If two ratings are equally common, the higher risk is chosen (conservative).
+    """
     if n <= 1:
         return run_once(0.2, "")
     samples = [run_once(0.8, f" [sample {i + 1}/{n}]") for i in range(n)]
     risks = [normalise_risk(s.get("risk")) for s in samples]
     votes = Counter(risks)
     top = max(votes.values())
-    majority = max((r for r, c in votes.items() if c == top), key=RISK_LEVELS.index)  # ties -> higher risk
+    majority = max((r for r, c in votes.items() if c == top), key=RISK_LEVELS.index)
 
     chosen = dict(next(s for s, r in zip(samples, risks) if r == majority))
     chosen["risk"] = majority
@@ -69,7 +84,10 @@ def self_consistency(run_once, n, vote_key=None):
     return chosen
 
 
+# Steps 1-5: each step is one legal sub-question with its own prompt and its own law notes.
+
 def step1_interpret(client, app):
+    """Step 1: understand the mark, its meaning to Australian consumers and its Nice classes."""
     task = """Step 1: Interpret the trade mark application.
 Return JSON with keys:
 - "mark_summary": one sentence describing the mark and its use
@@ -81,6 +99,7 @@ Return JSON with keys:
 
 
 def step2_s39_s42(client, app, s1):
+    """Step 2: prohibited signs (s 39), scandalous matter or use contrary to law (s 42)."""
     task = """Step 2: Assess sections 39 and 42 (prohibited signs; scandalous; contrary to law).
 Return JSON with keys: "s39_issue" (bool), "s39_reasoning", "s42_issue" (bool), "s42_reasoning",
 "risk" ("LOW" | "MEDIUM" | "HIGH"), "suggestion"."""
@@ -88,6 +107,7 @@ Return JSON with keys: "s39_issue" (bool), "s39_reasoning", "s42_issue" (bool), 
 
 
 def step3_s41(client, app, s1, n):
+    """Step 3: capacity to distinguish (s 41), asked n times with a majority vote."""
     task = """Step 3: Assess section 41 (capacity to distinguish).
 Work through: (a) ordinary signification of each word to the relevant Australian audience;
 (b) whether it directly describes the goods/services; (c) whether other traders, without improper
@@ -103,6 +123,7 @@ Return JSON with keys: "ordinary_signification", "descriptive_analysis", "other_
 
 
 def step4_s43(client, app, s1):
+    """Step 4: deceptive or confusing connotation (s 43)."""
     task = """Step 4: Assess section 43 (deceptive or confusing connotation).
 Return JSON with keys: "connotations" (list), "likely_to_deceive" (bool), "reasoning",
 "risk" ("LOW" | "MEDIUM" | "HIGH"), "suggestion"."""
@@ -110,6 +131,11 @@ Return JSON with keys: "connotations" (list), "likely_to_deceive" (bool), "reaso
 
 
 def step5_s44(client, app, s1, earlier_marks, n):
+    """Step 5: conflict with earlier marks (s 44).
+
+    Each earlier mark is compared separately, with a majority vote. If the user entered no
+    earlier marks, s 44 cannot be assessed, so the AI writes a register search plan instead.
+    """
     if not earlier_marks:
         task = """Step 5: No earlier marks were supplied, so section 44 cannot be assessed.
 Prepare a search plan for IP Australia's Australian Trade Mark Search.
@@ -137,7 +163,10 @@ Return JSON with keys: "earlier_mark", "goods_comparison", "substantially_identi
     return results
 
 
+# Step 6: reflection. A "reviewing partner" checks steps 1-5; flagged steps are re-run once.
+
 def step6_review(client, app, analysis):
+    """Step 6: the AI reviews the whole analysis and lists any steps that need to be redone."""
     task = """Step 6: Act as a senior reviewing partner. Check steps 1-5 for legal errors, misapplied
 tests, inconsistency, risk ratings that do not match the reasoning, and missing issues. Where a step
 has a "consistency" record, low agreement means the answers varied: treat it with extra care.
@@ -148,6 +177,7 @@ Return JSON with keys: "overall_quality", "steps_to_redo" (any of "step3_s41", "
 
 
 def redo_step(client, app, s1, step, previous, comment, earlier_marks):
+    """Re-run one flagged step, giving the AI its previous answer and the reviewer's comment."""
     law_key = {"step3_s41": "s41", "step4_s43": "s43", "step5_s44": "s44"}[step]
     task = f"""Revise your earlier analysis for {step} in light of the reviewer's comment.
 Keep the same JSON structure (for s44 return {{"results": [...]}}, one object per earlier mark).
@@ -161,20 +191,13 @@ Reviewer's comment: {comment}"""
     return revised
 
 
-def step7_report(client, app, analysis, review, conclusion):
-    task = """Step 7: Write the final registrability report for the applicant (a non-lawyer).
-The overall conclusion has already been decided by fixed rules (see "conclusion"): follow it exactly.
-Return JSON with key "report_markdown" with headings ## Summary, ## Classes, ## Ground-by-ground assessment,
-## Recommendations, ## Limitations. Use plain English and section numbers; do not invent cases.
-Where a step has a "consistency" record, say how many assessments agreed (e.g. "2 of 3 rated this HIGH")."""
-    return call_ai(client, task, {"application": app, "analysis": analysis, "review": review,
-                                  "conclusion": conclusion})
-
+# Rule-based conclusion: fixed if-then rules (no AI) turn the ratings into the overall outcome.
 
 def overall_conclusion(analysis, application):
-    """
-    If-then rules decide the overall outcome from the AI's ground-by-ground ratings,
-    so the final legal conclusion is controlled by code, not by the model.
+    """Decide the overall outcome from the ground-by-ground ratings.
+
+    Rule: any ground HIGH -> overall HIGH; otherwise any MEDIUM -> MEDIUM; otherwise LOW.
+    Extra rules flag s 41(4) evidence of use and an unassessed s 44.
     """
     grounds = {
         "s 39 / s 42": [analysis["step2_s39_s42"]],
@@ -199,16 +222,32 @@ def overall_conclusion(analysis, application):
 
     rules = [f"{g}: {r}" for g, r in ratings.items()]
     if "s 44" not in ratings:
-        rules.append("s 44: not assessed (no earlier marks entered) — search the register before filing")
+        rules.append("s 44: not assessed (no earlier marks entered) - search the register before filing")
     s41_adapt = str(analysis["step3_s41"].get("inherent_adaptation", "")).lower()
     if ratings.get("s 41") in ("HIGH", "MEDIUM") and application["prior_use_in_australia"] == "Used for 2+ years":
         rules.append("s 41(4): the mark has been used for 2+ years, so evidence of use may overcome the objection")
     elif s41_adapt == "not at all" and application["prior_use_in_australia"] == "Not yet used":
-        rules.append("s 41: not inherently adapted and not yet used — a different or more distinctive mark is advisable")
+        rules.append("s 41: not inherently adapted and not yet used - a different or more distinctive mark is advisable")
     return {"overall_risk": overall, "headline": headline, "rules_applied": rules}
 
 
+# Step 7: the final report for the applicant.
+
+def step7_report(client, app, analysis, review, conclusion):
+    """Step 7: write a plain-English report that follows the rule-based conclusion."""
+    task = """Step 7: Write the final registrability report for the applicant (a non-lawyer).
+The overall conclusion has already been decided by fixed rules (see "conclusion"): follow it exactly.
+Return JSON with key "report_markdown" with headings ## Summary, ## Classes, ## Ground-by-ground assessment,
+## Recommendations, ## Limitations. Use plain English and section numbers; do not invent cases.
+Where a step has a "consistency" record, say how many assessments agreed (e.g. "2 of 3 rated this HIGH")."""
+    return call_ai(client, task, {"application": app, "analysis": analysis, "review": review,
+                                  "conclusion": conclusion})
+
+
+# Display helpers.
+
 def parse_earlier_marks(text):
+    """Read the earlier marks box: one mark per line, 'MARK | goods/services | owner'."""
     marks = []
     for line in text.splitlines():
         if line.strip():
@@ -218,22 +257,25 @@ def parse_earlier_marks(text):
 
 
 def risk_badge(label, result):
+    """Show the risk rating for one ground, with the self-consistency agreement rate below it."""
     items = result if isinstance(result, list) else [result]
     if all(r.get("not_assessed") for r in items):
-        st.markdown(f"**{label}:** ⚪ NOT ASSESSED (no earlier marks entered)")
+        st.markdown(f"**{label}:** NOT ASSESSED (no earlier marks entered)")
         return
     risk = max((normalise_risk(r.get("risk")) for r in items), key=RISK_LEVELS.index)
-    st.markdown(f"**{label}:** {RISK_ICON[risk]} {risk}")
+    st.markdown(f"**{label}:** {risk}")
     for r in items:
         c = r.get("consistency") or r.get("consistency_before_review")
         if c:
             name = f"{r.get('earlier_mark', '')}: " if isinstance(result, list) else ""
-            votes = ", ".join(f"{k} ×{v}" for k, v in c["risk_votes"].items())
-            note = " — revised after review" if "consistency_before_review" in r else ""
+            votes = ", ".join(f"{k} x{v}" for k, v in c["risk_votes"].items())
+            note = " (revised after review)" if "consistency_before_review" in r else ""
             st.caption(f"{name}{int(c['agreement'] * 100)}% agreement ({votes}){note}")
 
 
-st.set_page_config(page_title="Trade Mark Pre-Check", page_icon="™️")
+# Page setup and sidebar: API key, reflection switch and number of self-consistency samples.
+
+st.set_page_config(page_title="Trade Mark Pre-Check")
 
 api_key = render_credentials_sidebar()
 with st.sidebar:
@@ -242,6 +284,9 @@ with st.sidebar:
 
 st.title("Australian Trade Mark Pre-Check")
 st.caption(DISCLAIMER)
+
+
+# Example loader: fills the form with the facts of a decided case (the README test cases).
 
 EXAMPLES = {
     "ORO for coffee (Cantarella, s 41)": {
@@ -265,12 +310,16 @@ for k, v in FIELDS.items():
 
 
 def load_example():
+    """Copy the chosen example into the form fields (or clear them if none is chosen)."""
     choice = st.session_state["example"]
     st.session_state.update({**FIELDS, **EXAMPLES.get(choice, {})})
 
 
-st.selectbox("Load an example (optional)", ["—"] + list(EXAMPLES), key="example", on_change=load_example,
+st.selectbox("Load an example (optional)", ["None"] + list(EXAMPLES), key="example", on_change=load_example,
              help="Fills in the form with the facts of a decided case, so you can compare the result with the court.")
+
+
+# Input form: one question per line.
 
 with st.form("application"):
     mark = st.text_input("Trade mark", key="mark", placeholder="e.g. ORO",
@@ -290,6 +339,9 @@ with st.form("application"):
         help="Search IP Australia's Australian Trade Mark Search for similar marks and enter them here. "
              "If left blank, s 44 is not assessed and a search plan is given instead.")
     submitted = st.form_submit_button("Run pre-check", type="primary")
+
+
+# Run the assessment when the form is submitted: steps 1-7 in order, with progress shown.
 
 if submitted:
     if not api_key:
@@ -313,55 +365,59 @@ if submitted:
 
     try:
         with st.status("Running the assessment...", expanded=True) as status:
-            st.write("Step 1 — interpreting the application")
+            st.write("Step 1: interpreting the application")
             s1 = step1_interpret(client, application)
-            st.write("Step 2 — ss 39 and 42")
+            st.write("Step 2: ss 39 and 42")
             s2 = step2_s39_s42(client, application, s1)
-            st.write(f"Step 3 — s 41 (asked {n_samples}×)")
+            st.write(f"Step 3: s 41 (asked {n_samples} times)")
             s3 = step3_s41(client, application, s1, n_samples)
-            st.write("Step 4 — s 43")
+            st.write("Step 4: s 43")
             s4 = step4_s43(client, application, s1)
-            st.write(f"Step 5 — s 44 (asked {n_samples}× per earlier mark)")
+            st.write(f"Step 5: s 44 (asked {n_samples} times per earlier mark)")
             s5 = step5_s44(client, application, s1, earlier_marks, n_samples)
 
             analysis = {"step1_interpretation": s1, "step2_s39_s42": s2, "step3_s41": s3,
                         "step4_s43": s4, "step5_s44": s5}
-            first_draft = json.loads(json.dumps(analysis))
+            first_draft = json.loads(json.dumps(analysis))  # copy kept to show what the review changed
 
             review = {"note": "Reflection switched off."}
             if use_reflection:
-                st.write("Step 6 — reviewer reflection")
+                st.write("Step 6: reviewer reflection")
                 review = step6_review(client, application, analysis)
                 for step in review.get("steps_to_redo") or []:
                     if step in ("step3_s41", "step4_s43", "step5_s44"):
-                        st.write(f"↻ Re-running {step}")
+                        st.write(f"Re-running {step} with the reviewer's comments")
                         comment = (review.get("comments") or {}).get(step, "Re-check this step.")
                         analysis[step] = redo_step(client, application, s1, step, analysis[step],
                                                    comment, earlier_marks)
 
             conclusion = overall_conclusion(analysis, application)
-            st.write("Step 7 — writing the report")
+            st.write("Step 7: writing the report")
             report = step7_report(client, application, analysis, review, conclusion)
-            status.update(label=f"Done — {len(st.session_state['call_log'])} AI calls", state="complete")
-    except Exception as exc:
+            status.update(label=f"Done: {len(st.session_state['call_log'])} AI calls", state="complete")
+    except Exception as exc:  # e.g. invalid API key or network error
         st.error(f"The assessment could not be completed: {exc}")
         st.stop()
 
+    # Saved in session state so the results stay on screen when the page reruns (e.g. after download).
     st.session_state["result"] = {"application": application, "analysis": analysis,
                                   "first_draft": first_draft, "review": review, "report": report,
                                   "conclusion": conclusion}
 
-# ---------------------------------------------------------------- Output
+
+# Results: overall conclusion, rating per ground, then four tabs
+# (final report, each step's analysis, the reviewer's comments, and the full AI call log).
+
 if "result" in st.session_state:
     res = st.session_state["result"]
     analysis, report, conclusion = res["analysis"], res["report"], res["conclusion"]
     overall = conclusion["overall_risk"]
 
     st.divider()
-    st.subheader(f"Overall risk of refusal: {RISK_ICON[overall]} {overall}")
+    st.subheader(f"Overall risk of refusal: {overall}")
     st.markdown(f"**{conclusion['headline']}**")
     with st.expander("How this conclusion was reached (rules applied)"):
-        st.markdown("- If any ground is HIGH → overall HIGH; else if any is MEDIUM → MEDIUM; otherwise LOW.\n"
+        st.markdown("- If any ground is HIGH, overall HIGH; else if any is MEDIUM, MEDIUM; otherwise LOW.\n"
                     + "\n".join(f"- {r}" for r in conclusion["rules_applied"]))
     risk_badge("s 39 / s 42", analysis["step2_s39_s42"])
     risk_badge("s 41", analysis["step3_s41"])
@@ -369,27 +425,31 @@ if "result" in st.session_state:
     risk_badge("s 44", analysis["step5_s44"])
 
     tab_report, tab_steps, tab_review, tab_log = st.tabs(["Report", "Steps", "Reviewer", "AI call log"])
-    with tab_report:
+
+    with tab_report:  # the final report for the applicant, with a download button
         report_md = report.get("report_markdown", "No report generated.")
         st.markdown(report_md)
         st.download_button(
             "Download report (.md)",
             f"# Trade Mark Pre-Check: {res['application']['mark']}\n\nDate: {date.today()}\n\n"
-            f"> {DISCLAIMER}\n\n**Overall risk:** {overall} — {conclusion['headline']}\n\n{report_md}\n",
+            f"> {DISCLAIMER}\n\n**Overall risk:** {overall} - {conclusion['headline']}\n\n{report_md}\n",
             file_name=f"precheck_{res['application']['mark'].replace(' ', '_')}.md",
         )
-    with tab_steps:
+
+    with tab_steps:  # the AI's answer for each of steps 1-5
         for name, value in analysis.items():
             with st.expander(name):
                 st.json(value)
-    with tab_review:
+
+    with tab_review:  # the reviewer's comments, and the first drafts of any steps it changed
         st.json(res["review"])
         changed = [k for k in analysis if analysis[k] != res["first_draft"][k]]
         st.markdown("**Changed after review:** " + (", ".join(changed) or "none"))
         for k in changed:
             with st.expander(f"First draft of {k}"):
                 st.json(res["first_draft"][k])
-    with tab_log:
+
+    with tab_log:  # every AI call made in this run
         log = st.session_state.get("call_log", [])
         st.write(f"Total AI calls: **{len(log)}**")
         for i, entry in enumerate(log, 1):

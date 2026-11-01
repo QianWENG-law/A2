@@ -61,12 +61,8 @@ Use the default settings (reflection on, asked 3 times) unless stated.
 | Prior use | Used for 2+ years |
 | Earlier trade marks | *(leave blank)* |
 
-**Court's outcome:** "ORO" (Italian for "gold") **was** inherently adapted to distinguish coffee.
-The High Court held that the test is the word's ordinary signification to Australian consumers,
-and that "oro" did not convey a descriptive meaning to them.
-**What this tests:** whether the tool follows a counter-intuitive High Court authority, or reasons
-from the translation ("gold" = laudatory) and wrongly finds the mark descriptive. With no earlier
-marks entered, it also shows the s 44 search-plan fallback.
+Court’s outcome: Registrable. “Oro” (Italian for “gold”) has no descriptive meaning to Australian consumers of coffee.
+What this tests: whether the tool follows a counter-intuitive High Court authority. Observed: the tool reasoned from the translation (“oro” = “gold”) and rated s 41 MEDIUM, giving an overall MEDIUM, which differs from the High Court. It did correctly flag that 2+ years of use may help under s 41(4). With no earlier marks entered, s 44 was marked “not assessed” and a search plan was given. This shows a limitation: the model applies the translation instead of the “ordinary signification to Australian consumers” test, even though the law notes describe that test.
 
 ### Test case 2:  *Clark Equipment Co v Registrar of Trade Marks* (1964) 111 CLR 511
 
@@ -78,10 +74,8 @@ marks entered, it also shows the s 44 search-plan fallback.
 | Prior use | Not yet used |
 | Earlier trade marks | *(leave blank)* |
 
-**Court's outcome:** **not** registrable. Michigan is a well-known place associated with
-manufacturing, and other traders could legitimately want to use the name for their goods.
-**What this tests:** a straightforward case where the tool should give a HIGH s 41 risk. This is
-where the tool is expected to perform well.
+Court’s outcome: Not registrable. Other traders may legitimately want to use a well-known place name.
+What this tests: a straightforward s 41 case. Observed: the tool correctly rated s 41 HIGH (geographic name, not inherently adapted to distinguish), matching the court. This shows a strength. However, it also rated s 43 HIGH (deceptive geographic origin) and gave a confused suggestion to limit the goods to those not made in Michigan. It also rated s 39/42 MEDIUM while saying “no issues identified”. This shows the tool can over-flag issues and be internally inconsistent.
 
 ### Test case 3:  *Self Care IP Holdings v Allergan Australia* [2023] HCA 8
 
@@ -93,22 +87,10 @@ where the tool is expected to perform well.
 | Prior use | Used for less than 2 years |
 | Earlier trade marks | `BOTOX \| Pharmaceutical preparations for the treatment of wrinkles, glabellar lines \| Allergan Inc` |
 
-**Court's outcome:** the High Court held that PROTOX was **not** deceptively similar to BOTOX
-(the case concerned infringement under s 120, which applies the same deceptive similarity test as
-s 44). The shared "-OX" ending and similar goods were not enough, and the reputation of BOTOX
-was not relevant to the comparison.
-**What this tests:** an evaluative "imperfect recollection" judgement. The tool is likely to rate
-the s 44 risk as HIGH because of the shared "-OX" ending and BOTOX's fame. This would differ
-from the High Court and shows a limitation of the tool.
+Court’s outcome: Not deceptively similar to BOTOX; the shared “-OX” ending was not enough.
+What this tests: an evaluative “imperfect recollection” judgement. Observed: the tool rated s 44 HIGH (deceptively similar to BOTOX), differing from the High Court. It also rated s 41 and s 43 HIGH, apparently influenced by the reputation of BOTOX, which the High Court held is not relevant to deceptive similarity. This shows a limitation: on evaluative tests, the model follows intuition and a famous mark’s reputation rather than the binding authority.
 
-For each test, note the agreement rate shown under the s 41 / s 44 ratings. Low agreement on the
-harder cases (tests 1 and 3) would itself show where the model is unreliable.
-
-### Optional variation: recall vs reasoning
-
-Repeat test 3 with invented names that have the same structure (e.g. mark `DERMAX`, earlier mark
-`VELMAX`, same goods). If the result changes, the tool may be relying on what the model
-"remembers" about the real case rather than on applying the test.
+For each test, also check the agreement rate under the s 41 / s 44 ratings, low agreement shows the model is unsure.
 
 ## Files
 
